@@ -1,0 +1,11 @@
+{
+  "iron_ore": {"name":"Iron Ore","color":"#86a7b8","value":1},
+  "copper_ore": {"name":"Copper Ore","color":"#d68755","value":1},
+  "coal": {"name":"Coal","color":"#4e5962","value":1},
+  "iron_plate": {"name":"Iron Plate","color":"#b9cbd3","value":4},
+  "copper_plate": {"name":"Copper Plate","color":"#ed9b65","value":4},
+  "gear": {"name":"Gear Assembly","color":"#b3bdc4","value":9},
+  "wire": {"name":"Copper Wire","color":"#f1b276","value":8},
+  "circuit": {"name":"Control Circuit","color":"#74d69d","value":18},
+  "science": {"name":"Research Pack","color":"#b68cff","value":32}
+}

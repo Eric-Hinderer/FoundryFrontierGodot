@@ -1,0 +1,8 @@
+{
+  "iron_plate": {"machine":"furnace","time":2.0,"inputs":{"iron_ore":1},"output":"iron_plate","count":1},
+  "copper_plate": {"machine":"furnace","time":2.0,"inputs":{"copper_ore":1},"output":"copper_plate","count":1},
+  "gear": {"machine":"assembler","time":2.5,"inputs":{"iron_plate":2},"output":"gear","count":1},
+  "wire": {"machine":"assembler","time":1.8,"inputs":{"copper_plate":1},"output":"wire","count":2},
+  "circuit": {"machine":"assembler","time":4.0,"inputs":{"iron_plate":1,"wire":2},"output":"circuit","count":1},
+  "science": {"machine":"assembler","time":6.0,"inputs":{"gear":1,"circuit":1},"output":"science","count":1}
+}

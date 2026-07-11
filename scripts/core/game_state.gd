@@ -76,7 +76,6 @@ func research_tech(tech_id: String) -> bool:
 	return true
 
 func _grant_free_tech() -> void:
-	# Repeatedly grant any zero-cost technology whose prerequisites are met.
 	var progressed := true
 	while progressed:
 		progressed = false

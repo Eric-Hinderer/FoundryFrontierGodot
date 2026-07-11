@@ -28,9 +28,13 @@ A clean Godot 4 rewrite of Foundry Frontier, designed around a data-driven facto
 | WASD / arrows | Move camera |
 | Middle mouse drag | Pan camera |
 | Mouse wheel | Zoom |
+| 1 – 6 | Select belt / miner / furnace / generator / assembler / storage |
 | Left click | Place or inspect |
+| Left click + drag | Lay a line of belts (auto-oriented to the drag) |
+| Right click | Remove a single structure (65% refund) |
 | R | Rotate placement direction |
 | X | Select area dismantle |
+| Esc | Inspect mode (stop building) |
 | F5 | Save |
 
 ## Architecture

@@ -63,7 +63,7 @@ offset_bottom = 880.0
 
 [node name="StatusLabel" type="Label" parent="HUD/BuildPanel/BuildVBox"]
 unique_name_in_owner = true
-text = "Select a structure and begin construction. R rotates; X dismantles."
+text = "Pick a structure (keys 1-6) and click or drag to build. R rotates · right click removes · X area dismantle · Esc inspect."
 
 [node name="BuildButtons" type="HBoxContainer" parent="HUD/BuildPanel/BuildVBox"]
 unique_name_in_owner = true

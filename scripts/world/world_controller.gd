@@ -3,21 +3,26 @@ class_name WorldController
 
 signal selection_changed(building: Dictionary)
 signal status_changed(message: String)
+signal tool_changed(tool_id: String)
 
 const TILE_SIZE := 64
 const WORLD_SIZE := Vector2i(48, 32)
 const DIRECTIONS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+const NO_TILE := Vector2i(-999, -999)
+const INPUT_BUFFER_LIMIT := 10
 
 var terrain: Dictionary = {}
 var buildings: Dictionary = {}
 var cargo: Array[Dictionary] = []
-var selected_tool := "belt"
+var selected_tool := "inspect"
 var build_direction := 1
 var demolish_start := Vector2i(-1, -1)
 var demolish_end := Vector2i(-1, -1)
 var hovered_tile := Vector2i.ZERO
 var simulation_accumulator := 0.0
 var rng := RandomNumberGenerator.new()
+var _last_placed_tile := NO_TILE
+var _received_this_step: Dictionary = {}
 
 func _ready() -> void:
     rng.seed = 1701
@@ -35,7 +40,14 @@ func _process(delta: float) -> void:
 
 func set_tool(tool_id: String) -> void:
     selected_tool = tool_id
-    status_changed.emit("Selected %s" % tool_id.capitalize())
+    if tool_id == "demolish":
+        demolish_start = Vector2i(-1, -1)
+        demolish_end = Vector2i(-1, -1)
+    tool_changed.emit(tool_id)
+    match tool_id:
+        "inspect": status_changed.emit("Inspect mode — click a structure to view it")
+        "demolish": status_changed.emit("Area dismantle — drag across structures to remove them")
+        _: status_changed.emit("Selected %s — drag to build, right click to remove" % tool_id.capitalize())
 
 func rotate_build() -> void:
     build_direction = (build_direction + 1) % 4
@@ -48,6 +60,7 @@ func is_in_bounds(tile: Vector2i) -> bool:
     return tile.x >= 0 and tile.y >= 0 and tile.x < WORLD_SIZE.x and tile.y < WORLD_SIZE.y
 
 func primary_click(tile: Vector2i) -> void:
+    _last_placed_tile = NO_TILE
     if not is_in_bounds(tile):
         return
     if selected_tool == "demolish":
@@ -57,7 +70,51 @@ func primary_click(tile: Vector2i) -> void:
     if buildings.has(tile):
         selection_changed.emit(buildings[tile])
         return
-    place_building(selected_tool, tile, build_direction)
+    if selected_tool == "inspect":
+        status_changed.emit("Empty tile — pick a structure to build here")
+        return
+    if place_building(selected_tool, tile, build_direction) and selected_tool == "belt":
+        _last_placed_tile = tile
+
+func drag_place(tile: Vector2i) -> void:
+    # Continuous belt laying: dragging with the belt tool paints an oriented line.
+    if selected_tool != "belt" or _last_placed_tile == NO_TILE:
+        return
+    if not is_in_bounds(tile) or tile == _last_placed_tile:
+        return
+    var delta := tile - _last_placed_tile
+    if absi(delta.x) + absi(delta.y) != 1:
+        return
+    var direction := _direction_from_delta(delta)
+    build_direction = direction
+    # Re-aim the previous belt so the chain flows toward the new segment.
+    if buildings.has(_last_placed_tile) and buildings[_last_placed_tile].type == "belt":
+        buildings[_last_placed_tile].direction = direction
+    if buildings.has(tile):
+        _last_placed_tile = tile if buildings[tile].type == "belt" else NO_TILE
+        return
+    if place_building("belt", tile, direction, true):
+        _last_placed_tile = tile
+
+func quick_demolish(tile: Vector2i) -> void:
+    if not is_in_bounds(tile) or not buildings.has(tile):
+        return
+    var building: Dictionary = buildings[tile]
+    if building.type == "hub":
+        status_changed.emit("The Command Core cannot be dismantled")
+        return
+    var definition: Dictionary = DataRegistry.buildings.get(building.type, {})
+    var refund := roundi(int(definition.get("cost", 0)) * 0.65)
+    buildings.erase(tile)
+    GameState.credits += refund
+    GameState.changed.emit()
+    status_changed.emit("Removed %s; recovered ₡%d" % [definition.get("name", building.type), refund])
+
+func _direction_from_delta(delta: Vector2i) -> int:
+    if delta == Vector2i.UP: return 0
+    if delta == Vector2i.RIGHT: return 1
+    if delta == Vector2i.DOWN: return 2
+    return 3
 
 func drag_to(tile: Vector2i) -> void:
     hovered_tile = tile
@@ -71,16 +128,18 @@ func release_click(tile: Vector2i) -> void:
         demolish_start = Vector2i(-1, -1)
         demolish_end = Vector2i(-1, -1)
 
-func place_building(type_id: String, tile: Vector2i, direction: int) -> bool:
+func place_building(type_id: String, tile: Vector2i, direction: int, quiet := false) -> bool:
     if not DataRegistry.buildings.has(type_id) or buildings.has(tile):
         return false
     if type_id == "miner" and not terrain.get(tile, {}).has("resource"):
-        status_changed.emit("Miners must be placed on a resource field")
+        if not quiet:
+            status_changed.emit("Miners must be placed on a resource field")
         return false
     var definition: Dictionary = DataRegistry.buildings[type_id]
     var cost := int(definition.get("cost", 0))
     if GameState.credits < cost:
-        status_changed.emit("Not enough credits")
+        if not quiet:
+            status_changed.emit("Not enough credits")
         return false
     GameState.credits -= cost
     buildings[tile] = {
@@ -95,7 +154,8 @@ func place_building(type_id: String, tile: Vector2i, direction: int) -> bool:
         "fuel": 0.0
     }
     GameState.changed.emit()
-    status_changed.emit("Built %s" % definition.get("name", type_id))
+    if not quiet:
+        status_changed.emit("Built %s" % definition.get("name", type_id))
     return true
 
 func serialize() -> Dictionary:
@@ -157,12 +217,14 @@ func _default_recipe(type_id: String) -> String:
     return ""
 
 func _simulation_step(dt: float) -> void:
+    _received_this_step.clear()
     var power := grid_power()
     for tile: Vector2i in buildings.keys():
         var building: Dictionary = buildings[tile]
         match building.type:
             "miner": _update_miner(building, dt * float(power.efficiency))
             "belt": _update_belt(building, dt)
+            "storage": _update_storage(building)
             "furnace", "assembler": _update_processor(building, dt * float(power.efficiency))
             "generator": _update_generator(building, dt)
         buildings[tile] = building
@@ -180,7 +242,29 @@ func _update_miner(building: Dictionary, dt: float) -> void:
         _try_emit_output(building)
 
 func _update_belt(building: Dictionary, _dt: float) -> void:
-    _try_accept_from_behind(building)
+    # Belts push their leading item forward. Items received this step stay at the
+    # back of the buffer, so we only forward an item that was already waiting —
+    # this keeps flow to one tile per tick without deadlocking a fed belt.
+    if building.output.is_empty():
+        return
+    var tile := Vector2i(building.x, building.y)
+    if building.output.size() > int(_received_this_step.get(tile, 0)):
+        _try_emit_output(building)
+
+func _update_storage(building: Dictionary) -> void:
+    # Storage acts as a buffer: it forwards buffered items and refills the buffer
+    # from its stored inventory, so goods no longer vanish inside it.
+    if not building.output.is_empty():
+        _try_emit_output(building)
+    if building.output.size() >= 4:
+        return
+    for item_id: String in building.inventory.keys():
+        if int(building.inventory[item_id]) > 0:
+            building.inventory[item_id] = int(building.inventory[item_id]) - 1
+            if int(building.inventory[item_id]) <= 0:
+                building.inventory.erase(item_id)
+            building.output.append(item_id)
+            return
 
 func _update_processor(building: Dictionary, dt: float) -> void:
     if building.output.size() > 0:
@@ -219,15 +303,6 @@ func _try_emit_output(building: Dictionary) -> void:
     if _receive_item(buildings[next_tile], item_id):
         building.output.pop_front()
 
-func _try_accept_from_behind(building: Dictionary) -> void:
-    var behind := Vector2i(building.x, building.y) - DIRECTIONS[int(building.direction)]
-    if not buildings.has(behind):
-        return
-    var source: Dictionary = buildings[behind]
-    if source.output.size() > 0 and _receive_item(building, String(source.output[0])):
-        source.output.pop_front()
-        buildings[behind] = source
-
 func _receive_item(building: Dictionary, item_id: String) -> bool:
     if building.type == "hub":
         var value := int(DataRegistry.items.get(item_id, {}).get("value", 0))
@@ -236,15 +311,35 @@ func _receive_item(building: Dictionary, item_id: String) -> bool:
     if building.type == "belt":
         if building.output.size() >= 3: return false
         building.output.append(item_id)
+        _mark_received(building)
         return true
     if building.type == "generator":
         if item_id != "coal": return false
         building.inventory.coal = int(building.inventory.get("coal", 0)) + 1
         return true
-    if building.type in ["furnace", "assembler", "storage"]:
+    if building.type == "storage":
+        if building.output.size() + _total_inventory(building) >= 40: return false
+        building.inventory[item_id] = int(building.inventory.get(item_id, 0)) + 1
+        return true
+    if building.type in ["furnace", "assembler"]:
+        var recipe: Dictionary = DataRegistry.recipes.get(building.recipe, {})
+        if not recipe.is_empty() and not recipe.inputs.has(item_id):
+            return false
+        if int(building.inventory.get(item_id, 0)) >= INPUT_BUFFER_LIMIT:
+            return false
         building.inventory[item_id] = int(building.inventory.get(item_id, 0)) + 1
         return true
     return false
+
+func _mark_received(building: Dictionary) -> void:
+    var tile := Vector2i(building.x, building.y)
+    _received_this_step[tile] = int(_received_this_step.get(tile, 0)) + 1
+
+func _total_inventory(building: Dictionary) -> int:
+    var total := 0
+    for amount: Variant in building.inventory.values():
+        total += int(amount)
+    return total
 
 func _has_recipe_inputs(inventory: Dictionary, inputs: Dictionary) -> bool:
     for item_id: String in inputs:
@@ -328,6 +423,18 @@ func _draw_previews() -> void:
         draw_rect(rect, Color(1.0, 0.35, 0.4, 0.95), false, 3.0)
     elif is_in_bounds(hovered_tile) and not buildings.has(hovered_tile):
         var center := Vector2(hovered_tile * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
-        draw_rect(Rect2(center - Vector2(27, 27), Vector2(54, 54)), Color(0.4, 0.9, 1.0, 0.18), true)
-        if selected_tool != "demolish":
-            _draw_arrow(center, build_direction, Color("#75e4f3"))
+        if selected_tool == "inspect" or selected_tool == "demolish":
+            draw_rect(Rect2(center - Vector2(27, 27), Vector2(54, 54)), Color(0.4, 0.9, 1.0, 0.10), false, 2.0)
+            return
+        var valid := _can_place_preview(hovered_tile)
+        var tint := Color(0.4, 0.9, 1.0, 0.18) if valid else Color(1.0, 0.35, 0.35, 0.20)
+        draw_rect(Rect2(center - Vector2(27, 27), Vector2(54, 54)), tint, true)
+        _draw_arrow(center, build_direction, Color("#75e4f3") if valid else Color("#ff6b6b"))
+
+func _can_place_preview(tile: Vector2i) -> bool:
+    var definition: Dictionary = DataRegistry.buildings.get(selected_tool, {})
+    if GameState.credits < int(definition.get("cost", 0)):
+        return false
+    if selected_tool == "miner" and not terrain.get(tile, {}).has("resource"):
+        return false
+    return true

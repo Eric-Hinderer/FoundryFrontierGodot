@@ -3,7 +3,7 @@
     "name": "Logistics",
     "cost": 0,
     "requires": [],
-    "unlocks_buildings": ["belt", "miner", "storage"],
+    "unlocks_buildings": ["belt", "splitter", "miner", "storage"],
     "unlocks_recipes": []
   },
   "smelting": {

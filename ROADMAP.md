@@ -13,9 +13,10 @@
 - [x] Belts that carry goods into machines and the hub
 - [x] Drag-to-lay belts with automatic orientation
 - [x] Recipe selection UI
-- [ ] Two physical belt lanes
-- [ ] Curved belt traversal
-- [ ] Splitters, mergers, filters, underground belts
+- [x] Two physical belt lanes
+- [x] Curved belt traversal
+- [x] Splitters and mergers
+- [ ] Filters and underground belts
 - [ ] Item pooling and chunk-level simulation
 
 ## Milestone 3 — Progression

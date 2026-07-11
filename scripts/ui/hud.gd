@@ -73,7 +73,13 @@ func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
 
 func _process(_delta: float) -> void:
 	var power := world.grid_power()
-	power_label.text = "⚡ %d / %d (%d%%)" % [power.demand, power.generation, roundi(float(power.efficiency) * 100.0)]
+	var efficiency := float(power.efficiency)
+	if efficiency >= 0.999:
+		power_label.text = "⚡ %d / %d" % [power.demand, power.generation]
+		power_label.modulate = Color.WHITE
+	else:
+		power_label.text = "⚡ %d / %d  ⚠ %d%%" % [power.demand, power.generation, roundi(efficiency * 100.0)]
+		power_label.modulate = Color("#ff9d5c")
 
 func _bind_buttons() -> void:
 	for button: Button in %BuildButtons.get_children():
@@ -125,14 +131,14 @@ func _inspect(building: Dictionary) -> void:
 	lines.append("Facing: %s" % ["North", "East", "South", "West"][int(building.direction)])
 	var recipe_id := String(building.get("recipe", ""))
 	if recipe_id != "" and DataRegistry.recipes.has(recipe_id):
-		var recipe: Dictionary = DataRegistry.recipes[recipe_id]
-		lines.append("Recipe: %s" % _item_name(recipe.output))
+		lines.append("Recipe: %s" % _recipe_summary(recipe_id))
 	if int(definition.get("power", 0)) > 0:
 		lines.append("Power draw: %d" % int(definition.get("power", 0)))
 	if building.type == "belt":
 		var ids: Array = []
-		for entry: Dictionary in building.get("items", []):
-			ids.append(String(entry.id))
+		for lane: Array in building.get("lanes", [[], []]):
+			for entry: Dictionary in lane:
+				ids.append(String(entry.id))
 		lines.append("Cargo: %s" % _format_items_list(ids))
 	else:
 		lines.append("Stored: %s" % _format_items(building.inventory))
@@ -147,11 +153,28 @@ func _populate_recipe_buttons(building: Dictionary) -> void:
 	recipe_header.visible = not options.is_empty()
 	var current := String(building.get("recipe", ""))
 	for recipe_id: String in options:
+		var recipe: Dictionary = DataRegistry.recipes[recipe_id]
 		var button := Button.new()
-		var marker := "● " if recipe_id == current else "○ "
-		button.text = marker + _item_name(DataRegistry.recipes[recipe_id].output)
+		button.toggle_mode = true
+		button.button_pressed = recipe_id == current
+		var out_count := int(recipe.get("count", 1))
+		var out_label := "%s ×%d" % [_item_name(recipe.output), out_count] if out_count > 1 else _item_name(recipe.output)
+		button.text = "%s\nfrom %s" % [out_label, _recipe_inputs(recipe_id)]
 		button.pressed.connect(_on_recipe_pressed.bind(recipe_id))
 		recipe_buttons.add_child(button)
+
+func _recipe_inputs(recipe_id: String) -> String:
+	var recipe: Dictionary = DataRegistry.recipes[recipe_id]
+	var parts: Array[String] = []
+	for item_id: String in recipe.inputs:
+		parts.append("%d %s" % [int(recipe.inputs[item_id]), _item_name(item_id)])
+	return "ore field" if parts.is_empty() else ", ".join(parts)
+
+func _recipe_summary(recipe_id: String) -> String:
+	var recipe: Dictionary = DataRegistry.recipes[recipe_id]
+	var out_count := int(recipe.get("count", 1))
+	var out_label := "%s ×%d" % [_item_name(recipe.output), out_count] if out_count > 1 else _item_name(recipe.output)
+	return "%s (from %s)" % [out_label, _recipe_inputs(recipe_id)]
 
 func _on_recipe_pressed(recipe_id: String) -> void:
 	world.set_recipe(_selected_tile, recipe_id)

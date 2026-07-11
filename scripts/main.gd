@@ -10,6 +10,7 @@ const TOOL_HOTKEYS := {
 	"build_generator": "generator",
 	"build_assembler": "assembler",
 	"build_storage": "storage",
+	"build_splitter": "splitter",
 }
 
 var dragging_camera := false

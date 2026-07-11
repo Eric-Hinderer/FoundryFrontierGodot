@@ -13,8 +13,8 @@ const INPUT_BUFFER_LIMIT := 10
 
 # Simulation tuning
 const TICK := 0.1
-const BELT_SPEED := 1.6      # tiles per second an item travels
-const ITEM_GAP := 0.30       # minimum spacing between items along a belt (tile units)
+const BELT_SPEED := 2.2      # tiles per second an item travels
+const ITEM_GAP := 0.28       # minimum spacing between items along a belt (tile units)
 
 var terrain: Dictionary = {}
 var buildings: Dictionary = {}
@@ -176,7 +176,8 @@ func _new_building(type_id: String, tile: Vector2i, direction: int) -> Dictionar
 		"direction": direction,
 		"inventory": {},
 		"output": [],
-		"items": [],
+		"lanes": [[], []],
+		"rr": 0,
 		"progress": 0.0,
 		"recipe": _default_recipe(type_id),
 		"fuel": 0.0
@@ -206,12 +207,13 @@ func restore(payload: Dictionary) -> void:
 	buildings.clear()
 	for row: Dictionary in payload.get("buildings", []):
 		var tile := Vector2i(int(row.get("x", 0)), int(row.get("y", 0)))
-		if not row.has("items"):
-			row["items"] = []
-			for legacy in row.get("output", []):
-				row["items"].append({"id": String(legacy), "pos": 0.0})
-			if row.get("type", "") == "belt":
-				row["output"] = []
+		if not row.has("lanes"):
+			var lane0: Array = []
+			for legacy in row.get("items", []):
+				lane0.append(legacy if legacy is Dictionary else {"id": String(legacy), "pos": 0.0})
+			row["lanes"] = [lane0, []]
+		if not row.has("rr"):
+			row["rr"] = 0
 		buildings[tile] = row
 	if not _has_hub():
 		_place_initial_hub()
@@ -219,14 +221,18 @@ func restore(payload: Dictionary) -> void:
 # --- Power ----------------------------------------------------------------
 
 func grid_power() -> Dictionary:
-	var generation := 20
+	var generation := 0
 	var demand := 0
 	for building: Dictionary in buildings.values():
 		var definition: Dictionary = DataRegistry.buildings.get(building.type, {})
 		demand += int(definition.get("power", 0))
-		if building.type == "generator" and float(building.get("fuel", 0.0)) > 0.0:
+		# The Command Core always supplies baseline power; generators add more
+		# while they still have coal burning.
+		if building.type == "hub":
 			generation += int(definition.get("generation", 0))
-	var efficiency := 1.0 if demand <= generation or demand == 0 else maxf(0.15, float(generation) / demand)
+		elif building.type == "generator" and float(building.get("fuel", 0.0)) > 0.0:
+			generation += int(definition.get("generation", 0))
+	var efficiency := 1.0 if demand <= generation or demand == 0 else maxf(0.3, float(generation) / demand)
 	return {"generation": generation, "demand": demand, "efficiency": efficiency}
 
 # --- Recipes --------------------------------------------------------------
@@ -269,6 +275,7 @@ func _machine_step(dt: float) -> void:
 		match building.type:
 			"miner": _update_miner(building, dt * efficiency)
 			"storage": _update_storage(building)
+			"splitter": _update_splitter(building)
 			"furnace", "assembler": _update_processor(building, dt * efficiency)
 			"generator": _update_generator(building, dt)
 
@@ -277,10 +284,10 @@ func _update_miner(building: Dictionary, dt: float) -> void:
 	var resource := String(terrain.get(tile, {}).get("resource", ""))
 	if resource == "":
 		return
-	if building.output.size() >= 1:
+	if building.output.size() >= 2:
 		_emit_output(building)
 		return
-	building.progress += dt / 1.2
+	building.progress += dt / 0.8
 	if building.progress >= 1.0:
 		building.progress = 0.0
 		building.output.append(resource)
@@ -330,7 +337,7 @@ func _emit_output(building: Dictionary) -> void:
 	if building.output.is_empty():
 		return
 	var tile := Vector2i(building.x, building.y)
-	if _push_to(tile, int(building.direction), String(building.output[0])):
+	if _push_to(tile, int(building.direction), String(building.output[0]), -1):
 		building.output.pop_front()
 
 # --- Belt simulation (per frame, smooth) ----------------------------------
@@ -342,38 +349,67 @@ func _belt_step(delta: float) -> void:
 			_advance_belt(tile, building, delta)
 
 func _advance_belt(tile: Vector2i, belt: Dictionary, delta: float) -> void:
-	var items: Array = belt.items
-	if items.is_empty():
-		return
 	var step := BELT_SPEED * delta
-	# Advance from the front (highest pos) to the back so items never overlap.
-	for i in range(items.size() - 1, -1, -1):
-		var ceiling := 1.0
-		if i < items.size() - 1:
-			ceiling = float(items[i + 1].pos) - ITEM_GAP
-		var target: float = minf(float(items[i].pos) + step, minf(ceiling, 1.0))
-		if target > float(items[i].pos):
-			items[i].pos = target
-	# Hand the leading item to the next tile once it reaches the exit.
-	var lead: Dictionary = items[items.size() - 1]
-	if float(lead.pos) >= 0.999 and _push_to(tile, int(belt.direction), String(lead.id)):
-		items.remove_at(items.size() - 1)
+	var direction := int(belt.direction)
+	for lane in 2:
+		var items: Array = belt.lanes[lane]
+		if items.is_empty():
+			continue
+		# Advance from the front (highest pos) to the back so items never overlap.
+		for i in range(items.size() - 1, -1, -1):
+			var ceiling := 1.0
+			if i < items.size() - 1:
+				ceiling = float(items[i + 1].pos) - ITEM_GAP
+			var target: float = minf(float(items[i].pos) + step, minf(ceiling, 1.0))
+			if target > float(items[i].pos):
+				items[i].pos = target
+		# Hand the leading item to the next tile once it reaches the exit.
+		var lead: Dictionary = items[items.size() - 1]
+		if float(lead.pos) >= 0.999 and _push_to(tile, direction, String(lead.id), lane):
+			items.remove_at(items.size() - 1)
 
-func _push_to(from_tile: Vector2i, direction: int, item_id: String) -> bool:
+# lane >= 0 keeps an item in the same lane (belt-to-belt); lane == -1 lets a
+# producer drop into whichever lane has room.
+func _push_to(from_tile: Vector2i, direction: int, item_id: String, lane: int) -> bool:
 	var next_tile := from_tile + DIRECTIONS[direction]
 	if not buildings.has(next_tile):
 		return false
 	var target: Dictionary = buildings[next_tile]
 	if target.type == "belt":
-		return _belt_accept(target, item_id, direction)
+		if lane >= 0:
+			return _belt_accept(target, item_id, direction, lane)
+		return _belt_accept(target, item_id, direction, 0) or _belt_accept(target, item_id, direction, 1)
+	if target.type == "splitter":
+		return _splitter_accept(target, item_id)
 	return _receive_item(target, item_id)
 
-func _belt_accept(belt: Dictionary, item_id: String, enter_dir: int) -> bool:
-	var items: Array = belt.items
+func _belt_accept(belt: Dictionary, item_id: String, enter_dir: int, lane: int) -> bool:
+	var items: Array = belt.lanes[lane]
 	if not items.is_empty() and float(items[0].pos) < ITEM_GAP:
 		return false
 	items.insert(0, {"id": item_id, "pos": 0.0, "in": enter_dir})
 	return true
+
+func _splitter_accept(splitter: Dictionary, item_id: String) -> bool:
+	if splitter.output.size() >= 6:
+		return false
+	splitter.output.append(item_id)
+	return true
+
+func _update_splitter(splitter: Dictionary) -> void:
+	if splitter.output.is_empty():
+		return
+	var tile := Vector2i(splitter.x, splitter.y)
+	var base := int(splitter.direction)
+	# Round-robin across forward, right, and left so one input feeds many lines.
+	var dirs := [base, (base + 1) % 4, (base + 3) % 4]
+	var item_id := String(splitter.output[0])
+	for k in 3:
+		var idx := (int(splitter.rr) + k) % 3
+		if _push_to(tile, dirs[idx], item_id, -1):
+			splitter.output.pop_front()
+			splitter.rr = (idx + 1) % 3
+			return
 
 func _receive_item(building: Dictionary, item_id: String) -> bool:
 	if building.type == "hub":
@@ -491,15 +527,24 @@ func _draw_belt(tile: Vector2i, belt: Dictionary) -> void:
 	draw_rect(Rect2(center - Vector2(28, 28), Vector2(56, 56)), Color("#1c262d"))
 	draw_rect(Rect2(center - Vector2(26, 26), Vector2(52, 52)), Color("#242f38"))
 	draw_rect(Rect2(center - Vector2(26, 26), Vector2(52, 52)), Color("#31434e"), false, 1.5)
+	# Lane divider running along the belt's path (shows the two lanes).
+	var mid_in := center - _dir_vec(in_dir) * (TILE_SIZE / 2.0)
+	var mid_out := center + _dir_vec(out_dir) * (TILE_SIZE / 2.0)
+	draw_line(mid_in, center, Color("#1a242b"), 1.5)
+	draw_line(center, mid_out, Color("#1a242b"), 1.5)
+	# Two rows of animated chevrons, one per lane.
 	var phase := fmod(Time.get_ticks_msec() / 1000.0 * BELT_SPEED, 1.0)
-	for k in 3:
-		var f := fmod(phase + float(k) / 3.0, 1.0)
-		var p := _belt_point(center, in_dir, out_dir, f)
-		var tang := _dir_vec(in_dir) if f < 0.5 else _dir_vec(out_dir)
-		var perp := Vector2(-tang.y, tang.x)
-		var tip := p + tang * 5.0
-		var back := p - tang * 4.0
-		draw_polyline(PackedVector2Array([back + perp * 7.0, tip, back - perp * 7.0]), Color("#4f6f7d", 0.85), 2.5, true)
+	for lane in 2:
+		var lane_sign := -1.0 if lane == 0 else 1.0
+		for k in 2:
+			var f := fmod(phase + float(k) / 2.0, 1.0)
+			var p := _belt_point(center, in_dir, out_dir, f)
+			var tang := _dir_vec(in_dir) if f < 0.5 else _dir_vec(out_dir)
+			var perp := Vector2(-tang.y, tang.x)
+			var base := p + perp * (lane_sign * 10.0)
+			var tip := base + tang * 4.0
+			var back := base - tang * 3.0
+			draw_polyline(PackedVector2Array([back + perp * 5.0, tip, back - perp * 5.0]), Color("#4f6f7d", 0.7), 2.0, true)
 
 # Travel direction that items arrive with, used to orient the belt track.
 # Items enter moving in their feeder's output direction; a perpendicular
@@ -517,9 +562,15 @@ func _belt_input_dir(tile: Vector2i, out_dir: int) -> int:
 func _draw_belt_items(tile: Vector2i, belt: Dictionary) -> void:
 	var center := _tile_center(tile)
 	var out_dir := int(belt.direction)
-	for item: Dictionary in belt.items:
-		var enter_dir := int(item.get("in", out_dir))
-		_draw_item(_belt_point(center, enter_dir, out_dir, float(item.pos)), String(item.id))
+	for lane in 2:
+		var lane_sign := -1.0 if lane == 0 else 1.0
+		for item: Dictionary in belt.lanes[lane]:
+			var enter_dir := int(item.get("in", out_dir))
+			var pos := float(item.pos)
+			var point := _belt_point(center, enter_dir, out_dir, pos)
+			var tang := _dir_vec(enter_dir) if pos < 0.5 else _dir_vec(out_dir)
+			var perp := Vector2(-tang.y, tang.x)
+			_draw_item(point + perp * (lane_sign * 10.0), String(item.id))
 
 # Maps a belt item's 0..1 progress to a screen point. When the entry and exit
 # directions differ (a corner), the item follows an L-shaped path through the
@@ -534,10 +585,10 @@ func _belt_point(center: Vector2, enter_dir: int, out_dir: int, pos: float) -> V
 
 func _draw_item(p: Vector2, item_id: String) -> void:
 	var col := Color(DataRegistry.items.get(item_id, {}).get("color", "#ffffff"))
-	draw_circle(p + Vector2(1, 2), 9.0, Color(0, 0, 0, 0.35))
-	draw_circle(p, 8.5, col.darkened(0.30))
-	draw_circle(p, 7.0, col)
-	draw_circle(p - Vector2(2, 2.5), 2.5, col.lightened(0.45))
+	draw_circle(p + Vector2(1, 1.5), 7.5, Color(0, 0, 0, 0.35))
+	draw_circle(p, 7.0, col.darkened(0.30))
+	draw_circle(p, 5.5, col)
+	draw_circle(p - Vector2(1.5, 2.0), 2.0, col.lightened(0.45))
 
 func _draw_machine(tile: Vector2i, building: Dictionary) -> void:
 	var definition: Dictionary = DataRegistry.buildings.get(building.type, {})
@@ -554,7 +605,7 @@ func _draw_machine(tile: Vector2i, building: Dictionary) -> void:
 	draw_rect(Rect2(center - Vector2(21, 21), Vector2(42, 10)), base.lightened(0.16))
 	draw_rect(Rect2(center - Vector2(21, 21), Vector2(42, 42)), base.lightened(0.25), false, 1.5)
 	_draw_glyph(center, building, working)
-	if building.type != "hub" and building.type != "generator":
+	if not building.type in ["hub", "generator", "splitter"]:
 		_draw_arrow(center + _dir_vec(int(building.direction)) * 20.0, int(building.direction), Color("#8fe6f3"))
 	if building.output.size() > 0:
 		_draw_item(center + Vector2(14, -14), String(building.output[0]))
@@ -589,6 +640,11 @@ func _draw_glyph(center: Vector2, building: Dictionary, working: bool) -> void:
 			draw_rect(Rect2(center - Vector2(13, 13), Vector2(26, 26)), Color("#8f9aa5"), false, 2.0)
 			draw_line(center + Vector2(-13, 0), center + Vector2(13, 0), Color("#8f9aa5"), 2.0)
 			draw_line(center + Vector2(0, -13), center + Vector2(0, 13), Color("#8f9aa5"), 2.0)
+		"splitter":
+			var d := int(building.direction)
+			for out_dir in [d, (d + 1) % 4, (d + 3) % 4]:
+				_draw_arrow(center + _dir_vec(out_dir) * 15.0, out_dir, Color("#bfe0ea"))
+			draw_circle(center, 4.0, Color("#bfe0ea"))
 		"hub":
 			draw_arc(center, 15.0, 0.0, TAU, 24, Color("#a9ecf7"), 3.0, true)
 			draw_colored_polygon(PackedVector2Array([center + Vector2(0, -9), center + Vector2(9, 0), center + Vector2(0, 9), center + Vector2(-9, 0)]), Color("#d7f6fb"))

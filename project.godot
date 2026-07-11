@@ -40,6 +40,7 @@ build_furnace={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":
 build_generator={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":52)]}
 build_assembler={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":53)]}
 build_storage={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":54)]}
+build_splitter={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":55)]}
 
 [layer_names]
 2d_render/layer_1="World"

@@ -39,6 +39,9 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func set_tool(tool_id: String) -> void:
+    if DataRegistry.buildings.has(tool_id) and not GameState.is_building_unlocked(tool_id):
+        status_changed.emit("%s is locked — research it first" % DataRegistry.buildings[tool_id].get("name", tool_id))
+        return
     selected_tool = tool_id
     if tool_id == "demolish":
         demolish_start = Vector2i(-1, -1)
@@ -131,6 +134,10 @@ func release_click(tile: Vector2i) -> void:
 func place_building(type_id: String, tile: Vector2i, direction: int, quiet := false) -> bool:
     if not DataRegistry.buildings.has(type_id) or buildings.has(tile):
         return false
+    if type_id != "hub" and not GameState.is_building_unlocked(type_id):
+        if not quiet:
+            status_changed.emit("%s is locked — research it first" % DataRegistry.buildings[type_id].get("name", type_id))
+        return false
     if type_id == "miner" and not terrain.get(tile, {}).has("resource"):
         if not quiet:
             status_changed.emit("Miners must be placed on a resource field")
@@ -212,9 +219,32 @@ func _has_hub() -> bool:
     return false
 
 func _default_recipe(type_id: String) -> String:
-    if type_id == "furnace": return "iron_plate"
-    if type_id == "assembler": return "gear"
-    return ""
+    var options := recipes_for_machine(type_id)
+    return options[0] if not options.is_empty() else ""
+
+func recipes_for_machine(machine: String) -> Array[String]:
+    var out: Array[String] = []
+    for recipe_id: String in DataRegistry.recipes:
+        if String(DataRegistry.recipes[recipe_id].get("machine", "")) != machine:
+            continue
+        if GameState.is_recipe_unlocked(recipe_id):
+            out.append(recipe_id)
+    return out
+
+func set_recipe(tile: Vector2i, recipe_id: String) -> void:
+    if not buildings.has(tile):
+        return
+    if not GameState.is_recipe_unlocked(recipe_id):
+        status_changed.emit("That recipe is locked")
+        return
+    var building: Dictionary = buildings[tile]
+    building.recipe = recipe_id
+    building.progress = 0.0
+    building.inventory = {}
+    building.output = []
+    var output_name := String(DataRegistry.items.get(DataRegistry.recipes[recipe_id].output, {}).get("name", recipe_id))
+    status_changed.emit("Now producing %s" % output_name)
+    selection_changed.emit(building)
 
 func _simulation_step(dt: float) -> void:
     _received_this_step.clear()

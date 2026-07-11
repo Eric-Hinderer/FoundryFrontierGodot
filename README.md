@@ -11,6 +11,9 @@ A clean Godot 4 rewrite of Foundry Frontier, designed around a data-driven facto
 - Electric miners, belts, furnaces, assemblers, generators, storage, and a protected Command Core
 - Power generation, demand, and brownout efficiency
 - Data-driven items, recipes, and building definitions
+- Per-machine recipe selection
+- Technology tree that gates buildings and recipes behind research
+- Delivery contracts that reward credits and research
 - Area dismantling with refunds
 - Inspector, build dock, status feedback, credits, research, and power HUD
 - JSON save/load through `user://foundry_frontier_save.json`

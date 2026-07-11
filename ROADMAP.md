@@ -10,16 +10,18 @@
 - [x] HUD and inspector
 
 ## Milestone 2 — Production-grade logistics
+- [x] Belts that carry goods into machines and the hub
+- [x] Drag-to-lay belts with automatic orientation
+- [x] Recipe selection UI
 - [ ] Two physical belt lanes
 - [ ] Curved belt traversal
 - [ ] Splitters, mergers, filters, underground belts
 - [ ] Item pooling and chunk-level simulation
-- [ ] Recipe selection UI
 
 ## Milestone 3 — Progression
-- [ ] Technology graph resources
-- [ ] Missions and rewards
-- [ ] Research safeguards
+- [x] Technology graph resources
+- [x] Research-gated buildings and recipes
+- [x] Missions and rewards
 - [ ] Recipe codex
 - [ ] Tutorial onboarding
 

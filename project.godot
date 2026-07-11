@@ -8,8 +8,8 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [autoload]
-GameState="*res://scripts/core/game_state.gd"
 DataRegistry="*res://scripts/core/data_registry.gd"
+GameState="*res://scripts/core/game_state.gd"
 
 [display]
 window/size/viewport_width=1600

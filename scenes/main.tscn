@@ -1,159 +1,185 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://bjyo2hmsciabh"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/world/world_controller.gd" id="2_world"]
-[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="3_hud"]
+[ext_resource type="Script" uid="uid://bpmyoag4v7ukg" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://k1kf4qa17uk8" path="res://scripts/world/world_controller.gd" id="2_world"]
+[ext_resource type="Script" uid="uid://bhmakcqnf7jem" path="res://scripts/ui/hud.gd" id="3_hud"]
 
-[node name="Main" type="Node"]
+[node name="Main" type="Node" unique_id=1298930150]
 script = ExtResource("1_main")
 
-[node name="World" type="Node2D" parent="."]
+[node name="World" type="Node2D" parent="." unique_id=328178527]
 unique_name_in_owner = true
 script = ExtResource("2_world")
 
-[node name="Camera2D" type="Camera2D" parent="World"]
+[node name="Camera2D" type="Camera2D" parent="World" unique_id=1780408199]
 unique_name_in_owner = true
 position = Vector2(1536, 1024)
-zoom = Vector2(1, 1)
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1252528053]
 script = ExtResource("3_hud")
 
-[node name="TopBar" type="PanelContainer" parent="HUD"]
+[node name="TopBar" type="PanelContainer" parent="HUD" unique_id=324273935]
 offset_left = 18.0
 offset_top = 18.0
 offset_right = 1582.0
 offset_bottom = 80.0
 
-[node name="TopRow" type="HBoxContainer" parent="HUD/TopBar"]
+[node name="TopRow" type="HBoxContainer" parent="HUD/TopBar" unique_id=1195958608]
+layout_mode = 2
 theme_override_constants/separation = 24
 
-[node name="Title" type="Label" parent="HUD/TopBar/TopRow"]
-text = "FOUNDRY FRONTIER · GODOT"
-theme_override_font_sizes/font_size = 22
+[node name="Title" type="Label" parent="HUD/TopBar/TopRow" unique_id=709150960]
+layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "FOUNDRY FRONTIER · GODOT"
 
-[node name="CreditsLabel" type="Label" parent="HUD/TopBar/TopRow"]
+[node name="CreditsLabel" type="Label" parent="HUD/TopBar/TopRow" unique_id=1058077241]
 unique_name_in_owner = true
+layout_mode = 2
 text = "₡ 600"
 
-[node name="PowerLabel" type="Label" parent="HUD/TopBar/TopRow"]
+[node name="PowerLabel" type="Label" parent="HUD/TopBar/TopRow" unique_id=1200709973]
 unique_name_in_owner = true
+layout_mode = 2
 text = "⚡ 0 / 20"
 
-[node name="ResearchLabel" type="Label" parent="HUD/TopBar/TopRow"]
+[node name="ResearchLabel" type="Label" parent="HUD/TopBar/TopRow" unique_id=233466049]
 unique_name_in_owner = true
+layout_mode = 2
 text = "◈ 3"
 
-[node name="SaveButton" type="Button" parent="HUD/TopBar/TopRow"]
+[node name="SaveButton" type="Button" parent="HUD/TopBar/TopRow" unique_id=1669742942]
 unique_name_in_owner = true
+layout_mode = 2
 text = "Save"
 
-[node name="LoadButton" type="Button" parent="HUD/TopBar/TopRow"]
+[node name="LoadButton" type="Button" parent="HUD/TopBar/TopRow" unique_id=1631885249]
 unique_name_in_owner = true
+layout_mode = 2
 text = "Load"
 
-[node name="BuildPanel" type="PanelContainer" parent="HUD"]
+[node name="BuildPanel" type="PanelContainer" parent="HUD" unique_id=1987800845]
 offset_left = 18.0
 offset_top = 690.0
 offset_right = 1582.0
 offset_bottom = 880.0
 
-[node name="BuildVBox" type="VBoxContainer" parent="HUD/BuildPanel"]
+[node name="BuildVBox" type="VBoxContainer" parent="HUD/BuildPanel" unique_id=1848839096]
+layout_mode = 2
 
-[node name="StatusLabel" type="Label" parent="HUD/BuildPanel/BuildVBox"]
+[node name="StatusLabel" type="Label" parent="HUD/BuildPanel/BuildVBox" unique_id=2016915682]
 unique_name_in_owner = true
+layout_mode = 2
 text = "Pick a structure (keys 1-6) and click or drag to build. R rotates · right click removes · X area dismantle · Esc inspect."
 
-[node name="BuildButtons" type="HBoxContainer" parent="HUD/BuildPanel/BuildVBox"]
+[node name="BuildButtons" type="HBoxContainer" parent="HUD/BuildPanel/BuildVBox" unique_id=2114282754]
 unique_name_in_owner = true
+layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Belt" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Belt" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=1989668688]
+layout_mode = 2
 text = "1 Belt · ₡2"
-metadata/_custom_type_script = null
 metadata/tool = "belt"
 
-[node name="Miner" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Miner" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=966552162]
+layout_mode = 2
 text = "2 Miner · ₡35"
 metadata/tool = "miner"
 
-[node name="Furnace" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Furnace" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=705408755]
+layout_mode = 2
 text = "3 Furnace · ₡55"
 metadata/tool = "furnace"
 
-[node name="Generator" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Generator" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=1884794130]
+layout_mode = 2
 text = "4 Generator · ₡65"
 metadata/tool = "generator"
 
-[node name="Assembler" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Assembler" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=1182515307]
+layout_mode = 2
 text = "5 Assembler · ₡90"
 metadata/tool = "assembler"
 
-[node name="Storage" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Storage" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=254498715]
+layout_mode = 2
 text = "6 Storage · ₡20"
 metadata/tool = "storage"
 
-[node name="Dismantle" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+[node name="Dismantle" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons" unique_id=560319093]
+layout_mode = 2
 text = "X Area Dismantle"
 metadata/tool = "demolish"
 
-[node name="Inspector" type="PanelContainer" parent="HUD"]
+[node name="Inspector" type="PanelContainer" parent="HUD" unique_id=942047957]
 offset_left = 1260.0
 offset_top = 96.0
 offset_right = 1582.0
 offset_bottom = 360.0
 
-[node name="InspectorBox" type="VBoxContainer" parent="HUD/Inspector"]
+[node name="InspectorBox" type="VBoxContainer" parent="HUD/Inspector" unique_id=1188408243]
+layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="InspectorLabel" type="RichTextLabel" parent="HUD/Inspector/InspectorBox"]
+[node name="InspectorLabel" type="RichTextLabel" parent="HUD/Inspector/InspectorBox" unique_id=1543814627]
 unique_name_in_owner = true
+layout_mode = 2
 bbcode_enabled = true
-text = "[b]INSPECTOR[/b]\nSelect a building to inspect its state."
+text = "[b]INSPECTOR[/b]
+Select a building to inspect its state."
 fit_content = true
 
-[node name="RecipeHeader" type="Label" parent="HUD/Inspector/InspectorBox"]
+[node name="RecipeHeader" type="Label" parent="HUD/Inspector/InspectorBox" unique_id=1429501716]
 unique_name_in_owner = true
-text = "Recipe"
 visible = false
+layout_mode = 2
+text = "Recipe"
 
-[node name="RecipeButtons" type="VBoxContainer" parent="HUD/Inspector/InspectorBox"]
+[node name="RecipeButtons" type="VBoxContainer" parent="HUD/Inspector/InspectorBox" unique_id=1209784559]
 unique_name_in_owner = true
+layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ResearchPanel" type="PanelContainer" parent="HUD"]
+[node name="ResearchPanel" type="PanelContainer" parent="HUD" unique_id=398720653]
 offset_left = 1260.0
 offset_top = 372.0
 offset_right = 1582.0
 offset_bottom = 600.0
 
-[node name="ResearchBox" type="VBoxContainer" parent="HUD/ResearchPanel"]
+[node name="ResearchBox" type="VBoxContainer" parent="HUD/ResearchPanel" unique_id=1063994379]
+layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="ResearchTitle" type="Label" parent="HUD/ResearchPanel/ResearchBox"]
-text = "RESEARCH"
+[node name="ResearchTitle" type="Label" parent="HUD/ResearchPanel/ResearchBox" unique_id=825645506]
+layout_mode = 2
 theme_override_font_sizes/font_size = 16
+text = "RESEARCH"
 
-[node name="TechButtons" type="VBoxContainer" parent="HUD/ResearchPanel/ResearchBox"]
+[node name="TechButtons" type="VBoxContainer" parent="HUD/ResearchPanel/ResearchBox" unique_id=1097783551]
 unique_name_in_owner = true
+layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="MissionPanel" type="PanelContainer" parent="HUD"]
+[node name="MissionPanel" type="PanelContainer" parent="HUD" unique_id=475100623]
 offset_left = 1260.0
 offset_top = 612.0
 offset_right = 1582.0
 offset_bottom = 676.0
 
-[node name="MissionBox" type="VBoxContainer" parent="HUD/MissionPanel"]
+[node name="MissionBox" type="VBoxContainer" parent="HUD/MissionPanel" unique_id=1862905679]
+layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="MissionTitle" type="Label" parent="HUD/MissionPanel/MissionBox"]
-text = "CONTRACT"
+[node name="MissionTitle" type="Label" parent="HUD/MissionPanel/MissionBox" unique_id=670734482]
+layout_mode = 2
 theme_override_font_sizes/font_size = 16
+text = "CONTRACT"
 
-[node name="MissionLabel" type="RichTextLabel" parent="HUD/MissionPanel/MissionBox"]
+[node name="MissionLabel" type="RichTextLabel" parent="HUD/MissionPanel/MissionBox" unique_id=105072032]
 unique_name_in_owner = true
+layout_mode = 2
 bbcode_enabled = true
 text = "Awaiting contract."
 fit_content = true

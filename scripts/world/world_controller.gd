@@ -26,10 +26,15 @@ var hovered_tile := Vector2i.ZERO
 var simulation_accumulator := 0.0
 var rng := RandomNumberGenerator.new()
 var _last_placed_tile := NO_TILE
+var _terrain_layer: Node2D
 
 func _ready() -> void:
 	rng.seed = 1701
+	_terrain_layer = preload("res://scripts/world/terrain_layer.gd").new()
+	_terrain_layer.z_index = -1
+	add_child(_terrain_layer)
 	_generate_terrain()
+	_terrain_layer.call("render", terrain)
 	_place_initial_hub()
 	queue_redraw()
 
@@ -54,7 +59,9 @@ func set_tool(tool_id: String) -> void:
 		demolish_end = Vector2i(-1, -1)
 	tool_changed.emit(tool_id)
 	match tool_id:
-		"inspect": status_changed.emit("Inspect mode — click a structure to view it")
+		"inspect":
+			selection_changed.emit({})
+			status_changed.emit("Inspect mode — click a structure to view it")
 		"demolish": status_changed.emit("Area dismantle — drag across structures to remove them")
 		_: status_changed.emit("Selected %s — drag to build, right click to remove" % tool_id.capitalize())
 
@@ -80,7 +87,8 @@ func primary_click(tile: Vector2i) -> void:
 		selection_changed.emit(buildings[tile])
 		return
 	if selected_tool == "inspect":
-		status_changed.emit("Empty tile — pick a structure to build here")
+		selection_changed.emit({})
+		status_changed.emit("Empty tile — nothing here")
 		return
 	if place_building(selected_tool, tile, build_direction) and selected_tool == "belt":
 		_last_placed_tile = tile
@@ -352,19 +360,19 @@ func _advance_belt(tile: Vector2i, belt: Dictionary, delta: float) -> void:
 		items.remove_at(items.size() - 1)
 
 func _push_to(from_tile: Vector2i, direction: int, item_id: String) -> bool:
-	var next_tile: Vector2i = from_tile + DIRECTIONS[direction]
+	var next_tile := from_tile + DIRECTIONS[direction]
 	if not buildings.has(next_tile):
 		return false
 	var target: Dictionary = buildings[next_tile]
 	if target.type == "belt":
-		return _belt_accept(target, item_id)
+		return _belt_accept(target, item_id, direction)
 	return _receive_item(target, item_id)
 
-func _belt_accept(belt: Dictionary, item_id: String) -> bool:
+func _belt_accept(belt: Dictionary, item_id: String, enter_dir: int) -> bool:
 	var items: Array = belt.items
 	if not items.is_empty() and float(items[0].pos) < ITEM_GAP:
 		return false
-	items.insert(0, {"id": item_id, "pos": 0.0})
+	items.insert(0, {"id": item_id, "pos": 0.0, "in": enter_dir})
 	return true
 
 func _receive_item(building: Dictionary, item_id: String) -> bool:
@@ -465,7 +473,6 @@ func _tile_center(tile: Vector2i) -> Vector2:
 	return Vector2(tile * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 
 func _draw() -> void:
-	_draw_terrain()
 	for tile: Vector2i in buildings:
 		if buildings[tile].type == "belt":
 			_draw_belt(tile, buildings[tile])
@@ -477,45 +484,53 @@ func _draw() -> void:
 			_draw_belt_items(tile, buildings[tile])
 	_draw_previews()
 
-func _draw_terrain() -> void:
-	for tile: Vector2i in terrain:
-		var info: Dictionary = terrain[tile]
-		var shade := float(info.shade)
-		var checker := 0.03 if (tile.x + tile.y) % 2 == 0 else 0.0
-		var base := Color("#0f171d").lerp(Color("#182530"), shade * 0.6 + checker)
-		var origin := Vector2(tile * TILE_SIZE)
-		draw_rect(Rect2(origin, Vector2(TILE_SIZE, TILE_SIZE)), base)
-		draw_rect(Rect2(origin, Vector2(TILE_SIZE, TILE_SIZE)), Color(0.30, 0.44, 0.50, 0.06), false, 1.0)
-		if info.has("resource"):
-			var color := Color(DataRegistry.items.get(info.resource, {}).get("color", "#ffffff"))
-			var center := _tile_center(tile)
-			for rock: Dictionary in info.get("rocks", []):
-				var p: Vector2 = center + rock.offset
-				draw_circle(p, float(rock.radius) + 1.5, Color(0, 0, 0, 0.25))
-				draw_circle(p, float(rock.radius), color.darkened(0.25))
-				draw_circle(p - Vector2(1.5, 2.0), float(rock.radius) * 0.45, color.lightened(0.25))
-
 func _draw_belt(tile: Vector2i, belt: Dictionary) -> void:
 	var center := _tile_center(tile)
-	var dir := _dir_vec(int(belt.direction))
-	var perp := Vector2(-dir.y, dir.x)
+	var out_dir := int(belt.direction)
+	var in_dir := _belt_input_dir(tile, out_dir)
 	draw_rect(Rect2(center - Vector2(28, 28), Vector2(56, 56)), Color("#1c262d"))
 	draw_rect(Rect2(center - Vector2(26, 26), Vector2(52, 52)), Color("#242f38"))
 	draw_rect(Rect2(center - Vector2(26, 26), Vector2(52, 52)), Color("#31434e"), false, 1.5)
 	var phase := fmod(Time.get_ticks_msec() / 1000.0 * BELT_SPEED, 1.0)
 	for k in 3:
 		var f := fmod(phase + float(k) / 3.0, 1.0)
-		var p := center + dir * ((f - 0.5) * 50.0)
-		var tip := p + dir * 5.0
-		var back := p - dir * 4.0
+		var p := _belt_point(center, in_dir, out_dir, f)
+		var tang := _dir_vec(in_dir) if f < 0.5 else _dir_vec(out_dir)
+		var perp := Vector2(-tang.y, tang.x)
+		var tip := p + tang * 5.0
+		var back := p - tang * 4.0
 		draw_polyline(PackedVector2Array([back + perp * 7.0, tip, back - perp * 7.0]), Color("#4f6f7d", 0.85), 2.5, true)
+
+# Travel direction that items arrive with, used to orient the belt track.
+# Items enter moving in their feeder's output direction; a perpendicular
+# feeder makes a corner, otherwise the belt runs straight (travel == output).
+func _belt_input_dir(tile: Vector2i, out_dir: int) -> int:
+	for d in 4:
+		var enter := (d + 2) % 4
+		if enter == out_dir:
+			continue
+		var neighbor_tile := tile + DIRECTIONS[d]
+		if buildings.has(neighbor_tile) and int(buildings[neighbor_tile].direction) == enter:
+			return enter
+	return out_dir
 
 func _draw_belt_items(tile: Vector2i, belt: Dictionary) -> void:
 	var center := _tile_center(tile)
-	var dir := _dir_vec(int(belt.direction))
+	var out_dir := int(belt.direction)
 	for item: Dictionary in belt.items:
-		var p: Vector2 = center + dir * ((float(item.pos) - 0.5) * 52.0)
-		_draw_item(p, String(item.id))
+		var enter_dir := int(item.get("in", out_dir))
+		_draw_item(_belt_point(center, enter_dir, out_dir, float(item.pos)), String(item.id))
+
+# Maps a belt item's 0..1 progress to a screen point. When the entry and exit
+# directions differ (a corner), the item follows an L-shaped path through the
+# tile centre so it visibly turns instead of hopping.
+func _belt_point(center: Vector2, enter_dir: int, out_dir: int, pos: float) -> Vector2:
+	var half := TILE_SIZE / 2.0
+	var enter_vec := _dir_vec(enter_dir)
+	var exit_vec := _dir_vec(out_dir)
+	if pos <= 0.5:
+		return (center - enter_vec * half).lerp(center, pos / 0.5)
+	return center.lerp(center + exit_vec * half, (pos - 0.5) / 0.5)
 
 func _draw_item(p: Vector2, item_id: String) -> void:
 	var col := Color(DataRegistry.items.get(item_id, {}).get("color", "#ffffff"))

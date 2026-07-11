@@ -70,33 +70,52 @@ unique_name_in_owner = true
 theme_override_constants/separation = 8
 
 [node name="Belt" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "1 Belt · ₡2"
-metadata/_custom_type_script = null
+size_flags_horizontal = 3
+text = "1  Belt
+₡2"
 metadata/tool = "belt"
 
 [node name="Miner" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "2 Miner · ₡35"
+size_flags_horizontal = 3
+text = "2  Miner
+₡35"
 metadata/tool = "miner"
 
 [node name="Furnace" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "3 Furnace · ₡55"
+size_flags_horizontal = 3
+text = "3  Furnace
+₡55"
 metadata/tool = "furnace"
 
 [node name="Generator" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "4 Generator · ₡65"
+size_flags_horizontal = 3
+text = "4  Generator
+₡65"
 metadata/tool = "generator"
 
 [node name="Assembler" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "5 Assembler · ₡90"
+size_flags_horizontal = 3
+text = "5  Assembler
+₡90"
 metadata/tool = "assembler"
 
 [node name="Storage" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "6 Storage · ₡20"
+size_flags_horizontal = 3
+text = "6  Storage
+₡20"
 metadata/tool = "storage"
 
 [node name="Dismantle" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
-text = "X Area Dismantle"
+size_flags_horizontal = 3
+text = "X  Dismantle
+area"
 metadata/tool = "demolish"
+
+[node name="Deselect" type="Button" parent="HUD/BuildPanel/BuildVBox/BuildButtons"]
+size_flags_horizontal = 3
+text = "Esc  Deselect
+inspect"
+metadata/tool = "inspect"
 
 [node name="Inspector" type="PanelContainer" parent="HUD"]
 offset_left = 1260.0

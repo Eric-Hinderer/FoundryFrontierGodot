@@ -8,8 +8,8 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [autoload]
-GameState="*res://scripts/core/game_state.gd"
 DataRegistry="*res://scripts/core/data_registry.gd"
+GameState="*res://scripts/core/game_state.gd"
 
 [display]
 window/size/viewport_width=1600
@@ -32,6 +32,13 @@ move_right={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":68)
 rotate_build={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":82)]}
 demolish_mode={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":88)]}
 save_game={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":4194338)]}
+cancel_tool={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":4194305)]}
+build_belt={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":49)]}
+build_miner={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":50)]}
+build_furnace={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":51)]}
+build_generator={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":52)]}
+build_assembler={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":53)]}
+build_storage={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":54)]}
 
 [layer_names]
 2d_render/layer_1="World"

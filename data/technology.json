@@ -1,0 +1,37 @@
+{
+  "logistics": {
+    "name": "Logistics",
+    "cost": 0,
+    "requires": [],
+    "unlocks_buildings": ["belt", "miner", "storage"],
+    "unlocks_recipes": []
+  },
+  "smelting": {
+    "name": "Smelting",
+    "cost": 0,
+    "requires": [],
+    "unlocks_buildings": ["furnace", "generator"],
+    "unlocks_recipes": ["iron_plate", "copper_plate"]
+  },
+  "assembly": {
+    "name": "Assembly Line",
+    "cost": 3,
+    "requires": ["smelting"],
+    "unlocks_buildings": ["assembler"],
+    "unlocks_recipes": ["gear", "wire"]
+  },
+  "electronics": {
+    "name": "Electronics",
+    "cost": 5,
+    "requires": ["assembly"],
+    "unlocks_buildings": [],
+    "unlocks_recipes": ["circuit"]
+  },
+  "research_automation": {
+    "name": "Research Automation",
+    "cost": 8,
+    "requires": ["electronics"],
+    "unlocks_buildings": [],
+    "unlocks_recipes": ["science"]
+  }
+}

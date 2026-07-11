@@ -1,0 +1,10 @@
+{
+  "missions": [
+    {"id": "m1", "name": "First Exports", "item": "iron_plate", "amount": 20, "reward_credits": 150, "reward_research": 2},
+    {"id": "m2", "name": "Copper Supply", "item": "copper_plate", "amount": 15, "reward_credits": 150, "reward_research": 2},
+    {"id": "m3", "name": "Mechanize", "item": "gear", "amount": 15, "reward_credits": 300, "reward_research": 3},
+    {"id": "m4", "name": "Drawn Wire", "item": "wire", "amount": 20, "reward_credits": 300, "reward_research": 3},
+    {"id": "m5", "name": "Circuitry", "item": "circuit", "amount": 10, "reward_credits": 600, "reward_research": 5},
+    {"id": "m6", "name": "Frontier Science", "item": "science", "amount": 10, "reward_credits": 1000, "reward_research": 8}
+  ]
+}

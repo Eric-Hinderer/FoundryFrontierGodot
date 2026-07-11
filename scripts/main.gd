@@ -3,7 +3,17 @@ extends Node
 @onready var world: WorldController = %World
 @onready var camera: Camera2D = %Camera2D
 
+const TOOL_HOTKEYS := {
+    "build_belt": "belt",
+    "build_miner": "miner",
+    "build_furnace": "furnace",
+    "build_generator": "generator",
+    "build_assembler": "assembler",
+    "build_storage": "storage",
+}
+
 var dragging_camera := false
+var placing := false
 var last_mouse_position := Vector2.ZERO
 
 func _ready() -> void:
@@ -23,8 +33,12 @@ func _unhandled_input(event: InputEvent) -> void:
         world.rotate_build()
     elif event.is_action_pressed("demolish_mode"):
         world.set_tool("demolish")
+    elif event.is_action_pressed("cancel_tool"):
+        world.set_tool("inspect")
     elif event.is_action_pressed("save_game"):
         GameState.save_world(world.serialize())
+    elif _handle_tool_hotkey(event):
+        return
     elif event is InputEventMouseButton:
         var mouse_event := event as InputEventMouseButton
         if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
@@ -34,14 +48,28 @@ func _unhandled_input(event: InputEvent) -> void:
         elif mouse_event.button_index == MOUSE_BUTTON_MIDDLE:
             dragging_camera = mouse_event.pressed
             last_mouse_position = mouse_event.position
+        elif mouse_event.button_index == MOUSE_BUTTON_RIGHT and mouse_event.pressed:
+            world.quick_demolish(world.tile_from_world(world.get_global_mouse_position()))
         elif mouse_event.button_index == MOUSE_BUTTON_LEFT:
             var tile := world.tile_from_world(world.get_global_mouse_position())
             if mouse_event.pressed:
+                placing = true
                 world.primary_click(tile)
             else:
+                placing = false
                 world.release_click(tile)
     elif event is InputEventMouseMotion:
         var motion := event as InputEventMouseMotion
         if dragging_camera:
             camera.position -= motion.relative / camera.zoom.x
-        world.drag_to(world.tile_from_world(world.get_global_mouse_position()))
+        var hover_tile := world.tile_from_world(world.get_global_mouse_position())
+        world.drag_to(hover_tile)
+        if placing:
+            world.drag_place(hover_tile)
+
+func _handle_tool_hotkey(event: InputEvent) -> bool:
+    for action: String in TOOL_HOTKEYS:
+        if event.is_action_pressed(action):
+            world.set_tool(TOOL_HOTKEYS[action])
+            return true
+    return false

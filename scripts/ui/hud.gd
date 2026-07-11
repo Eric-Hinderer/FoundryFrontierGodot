@@ -15,6 +15,7 @@ var _selected_tile := Vector2i(-999, -999)
 var _tech_button_map: Dictionary = {}
 
 func _ready() -> void:
+    _apply_theme()
     GameState.changed.connect(_refresh)
     GameState.mission_completed.connect(_on_mission_completed)
     GameState.tech_unlocked.connect(_on_tech_unlocked)
@@ -25,6 +26,41 @@ func _ready() -> void:
     _build_tech_panel()
     _highlight_tool(world.selected_tool)
     _refresh()
+
+func _apply_theme() -> void:
+    var theme := Theme.new()
+    theme.set_stylebox("panel", "PanelContainer", _panel_style())
+    theme.set_stylebox("normal", "Button", _button_style(Color("#1d2a32")))
+    theme.set_stylebox("hover", "Button", _button_style(Color("#27373f")))
+    theme.set_stylebox("pressed", "Button", _button_style(Color("#2f8f9e")))
+    theme.set_stylebox("focus", "Button", _button_style(Color("#27373f")))
+    theme.set_stylebox("disabled", "Button", _button_style(Color("#161d22")))
+    theme.set_color("font_color", "Button", Color("#d6e8ef"))
+    theme.set_color("font_hover_color", "Button", Color("#ffffff"))
+    theme.set_color("font_disabled_color", "Button", Color("#59666e"))
+    theme.set_color("font_color", "Label", Color("#cfe3ea"))
+    theme.set_color("default_color", "RichTextLabel", Color("#cfe3ea"))
+    for child in get_children():
+        if child is Control:
+            (child as Control).theme = theme
+
+func _panel_style() -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color("#111a20ee")
+    style.set_corner_radius_all(8)
+    style.set_border_width_all(1)
+    style.border_color = Color("#2b3d47")
+    style.set_content_margin_all(10)
+    return style
+
+func _button_style(color: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = color
+    style.set_corner_radius_all(6)
+    style.set_border_width_all(1)
+    style.border_color = Color("#384a54")
+    style.set_content_margin_all(6)
+    return style
 
 func _process(_delta: float) -> void:
     var power := world.grid_power()
@@ -77,8 +113,14 @@ func _inspect(building: Dictionary) -> void:
         lines.append("Recipe: %s" % _item_name(recipe.output))
     if int(definition.get("power", 0)) > 0:
         lines.append("Power draw: %d" % int(definition.get("power", 0)))
-    lines.append("Stored: %s" % _format_items(building.inventory))
-    lines.append("Buffer: %s" % _format_items_list(building.output))
+    if building.type == "belt":
+        var ids: Array = []
+        for entry: Dictionary in building.get("items", []):
+            ids.append(String(entry.id))
+        lines.append("Cargo: %s" % _format_items_list(ids))
+    else:
+        lines.append("Stored: %s" % _format_items(building.inventory))
+        lines.append("Buffer: %s" % _format_items_list(building.output))
     if building.type in ["miner", "furnace", "assembler"]:
         lines.append("Progress: %d%%" % roundi(float(building.progress) * 100.0))
     inspector_label.text = "\n".join(lines)

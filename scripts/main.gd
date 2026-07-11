@@ -51,7 +51,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif mouse_event.button_index == MOUSE_BUTTON_RIGHT and mouse_event.pressed:
 			world.quick_demolish(world.tile_from_world(world.get_global_mouse_position()))
 		elif mouse_event.button_index == MOUSE_BUTTON_LEFT:
-			var tile := world.tile_from_world(world.get_global_mouse_position())
+			var tile: Vector2i = world.tile_from_world(world.get_global_mouse_position())
 			if mouse_event.pressed:
 				placing = true
 				world.primary_click(tile)
@@ -62,7 +62,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var motion := event as InputEventMouseMotion
 		if dragging_camera:
 			camera.position -= motion.relative / camera.zoom.x
-		var hover_tile := world.tile_from_world(world.get_global_mouse_position())
+		var hover_tile: Vector2i = world.tile_from_world(world.get_global_mouse_position())
 		world.drag_to(hover_tile)
 		if placing:
 			world.drag_place(hover_tile)

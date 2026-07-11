@@ -85,12 +85,12 @@ func _grant_free_tech() -> void:
 			var tech: Dictionary = DataRegistry.technology[tech_id]
 			if int(tech.get("cost", 0)) != 0:
 				continue
-			var ready := true
+			var prereqs := true
 			for requirement: String in tech.get("requires", []):
 				if not requirement in unlocked_tech:
-					ready = false
+					prereqs = false
 					break
-			if ready:
+			if prereqs:
 				unlocked_tech.append(tech_id)
 				progressed = true
 

@@ -326,7 +326,7 @@ func _update_generator(building: Dictionary, dt: float) -> void:
 func _try_emit_output(building: Dictionary) -> void:
 	if building.output.is_empty():
 		return
-	Vector2i next_tile := Vector2i(building.x, building.y) + DIRECTIONS[int(building.direction)]
+	var next_tile: Vector2i = Vector2i(int(building.x), int(building.y)) + DIRECTIONS[int(building.direction)]
 	if not buildings.has(next_tile):
 		return
 	var item_id := String(building.output[0])
